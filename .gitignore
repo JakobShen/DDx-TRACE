@@ -1,0 +1,40 @@
+# Python/cache artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Secrets and cloud credentials
+aa_api_key.env.sh
+*api_key*.env*
+!aa_api_key.env.example
+*service-account*.json
+*service_account*.json
+*credentials*.json
+*credential*.json
+*private_key*.json
+*.pem
+*.key
+
+# Data, images, and benchmark outputs
+runs/
+images/
+eurorad_neuro*.json
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Local/editor files
+.DS_Store
+.idea/
+.vscode/
