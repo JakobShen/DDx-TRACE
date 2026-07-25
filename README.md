@@ -1,6 +1,8 @@
-# EuroRad main-benchmark refactor
+# DDx-TRACE
 
-This package implements the **official main experiment** aligned to the revised paper:
+DDx-TRACE is a sequential diagnostic benchmark for active evidence acquisition in radiology cases. This public release contains the benchmark code and reproduction instructions; datasets, images, run outputs, credentials, and machine-specific launchers are intentionally excluded.
+
+This package implements the **official main experiment** aligned to the paper:
 
 - hidden inventory
 - open-ended free-form exam requests
@@ -14,6 +16,47 @@ This package implements the **official main experiment** aligned to the revised 
 - `run_main.py` — entrypoint, provider adapters, run orchestration, compact output packaging
 - `pipeline_main.py` — official main pipeline, dataset adaptation, matcher, metrics, preflight
 - `judge.py` — single-call LLM judge + deterministic scorer
+
+## Quick start
+
+Create a clean Python environment and install the runtime dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Provide your own benchmark JSON and local images. The dataset release is available at <https://huggingface.co/datasets/Anonym001/DDx-TRACE>. After downloading, `--data-path` should point to the case JSON and `--image-root` should point either to the dataset project root or directly to the `images/` directory.
+
+Copy the environment template and fill in only the providers you plan to use:
+
+```bash
+cp aa_api_key.env.example .env.local
+source .env.local
+```
+
+For the paper-style LLM judge, the default is Vertex Gemini:
+
+```bash
+export VERTEX_API_KEY="..."
+```
+
+Run a two-case smoke test before any full run:
+
+```bash
+python run_main.py \
+  --data-path /path/to/eurorad_neuro_01.json \
+  --image-root /path/to/project_root_or_images_dir \
+  --out-dir runs/smoke_openai \
+  --provider openai \
+  --target-model gpt-5.4 \
+  --judge-provider vertex \
+  --judge-model gemini-3-flash-preview \
+  --max-output-tokens 8192 \
+  --judge-max-output-tokens 8192 \
+  --limit 2
+```
 
 ## Generation defaults
 
@@ -34,11 +77,139 @@ Target model and LLM judge model can be selected independently.
 - `anthropic` — Messages API with local history management; structured output uses `output_config.format`
 - `gemini` — `generateContent` with local history management; structured output uses `responseJsonSchema`
 - `vertex` — Vertex AI Gemini through `google-genai` express mode; structured output uses `response_json_schema`
-- `qwen` — DashScope router; `--qwen-transport auto|chat|responses`; structured output uses chat `response_format` JSON Schema or Responses `text.format`
+- `qwen` — DashScope or any OpenAI-compatible local gateway; `--qwen-transport auto|chat|responses`; structured output uses chat `response_format` JSON Schema or Responses `text.format`
 
 ### Important Qwen note
 
 For the benchmark, local images are expected through `--image-root`. In `auto` mode, the Qwen adapter defaults to the OpenAI-compatible **chat** transport because this is the safest path for local image payloads. If you use hosted/public image URLs and want server-side response chaining, pass `--qwen-transport responses`.
+
+The same `qwen` adapter is also the intended path for open-weight vision-language models served through vLLM, SGLang, LM Studio, or another OpenAI-compatible `/v1/chat/completions` server.
+
+## Open-weight models with vLLM
+
+Reviewer-facing reproduction of open-source model runs should use the OpenAI-compatible local-server path. The benchmark sends text plus local images as base64 `image_url` chat content, so the model server must support multimodal chat completions.
+
+### MedGemma setup
+
+MedGemma weights are hosted on Hugging Face. Accept the model terms for the specific model you use, then authenticate your machine:
+
+```bash
+huggingface-cli login
+```
+
+Install vLLM in a separate serving environment:
+
+```bash
+python -m venv .venv-vllm
+source .venv-vllm/bin/activate
+pip install vllm
+```
+
+Start a MedGemma 27B IT server:
+
+```bash
+vllm serve google/medgemma-27b-it \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --served-model-name medgemma-27b-it \
+  --trust-remote-code \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 16384
+```
+
+For MedGemma 1.5 4B IT, replace the model path and served name:
+
+```bash
+vllm serve google/medgemma-1.5-4b-it \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --served-model-name medgemma-1.5-4b-it \
+  --trust-remote-code \
+  --dtype auto \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 16384
+```
+
+The original MedGemma 4B IT model can be run the same way with `google/medgemma-4b-it`.
+
+### MedGemma smoke test
+
+In the benchmark environment, set a dummy candidate key through the environment, not through `--api-key`. This matters because `--api-key` is also used as the judge key when `--judge-api-key` is omitted.
+
+```bash
+source .venv/bin/activate
+export DASHSCOPE_API_KEY="dummy"
+export VERTEX_API_KEY="..."
+
+python run_main.py \
+  --data-path /path/to/eurorad_neuro_01.json \
+  --image-root /path/to/project_root_or_images_dir \
+  --out-dir runs/medgemma27b_smoke \
+  --provider qwen \
+  --target-model medgemma-27b-it \
+  --model-label "MedGemma 27B IT" \
+  --qwen-transport chat \
+  --base-url http://127.0.0.1:8000/v1 \
+  --judge-provider vertex \
+  --judge-model gemini-3-flash-preview \
+  --max-output-tokens 8192 \
+  --judge-max-output-tokens 8192 \
+  --limit 2
+```
+
+If the local server rejects OpenAI JSON-schema `response_format`, rerun with:
+
+```bash
+--agent-structured-output never
+```
+
+This keeps the target model on prompt-JSON output while leaving the Vertex Gemini judge unchanged.
+
+### MedGemma full run
+
+After the smoke test succeeds, run the full benchmark by removing `--limit` and writing to a fresh output directory:
+
+```bash
+python run_main.py \
+  --data-path /path/to/eurorad_neuro_01.json \
+  --image-root /path/to/project_root_or_images_dir \
+  --out-dir runs/medgemma27b_full \
+  --provider qwen \
+  --target-model medgemma-27b-it \
+  --model-label "MedGemma 27B IT" \
+  --qwen-transport chat \
+  --base-url http://127.0.0.1:8000/v1 \
+  --judge-provider vertex \
+  --judge-model gemini-3-flash-preview \
+  --max-output-tokens 8192 \
+  --judge-max-output-tokens 8192 \
+  --continue-on-error
+```
+
+For another open-weight model, keep the same benchmark command and change only the vLLM `--served-model-name`, the benchmark `--target-model`, and `--model-label`.
+
+### Smoke-test acceptance checks
+
+A valid two-case smoke should produce an output subdirectory under `--out-dir` containing `benchmark_summary.json`, `benchmark_full.json`, per-case logs, turn raw/normalized files, and final metrics.
+
+Check these fields before launching a full run:
+
+- `benchmark_full.json -> run_progress.is_final` is `true`
+- `benchmark_full.json -> run_progress.completed_cases` equals the requested smoke limit
+- `benchmark_full.json -> run_progress.failed_cases` is `0`
+- `benchmark_full.json -> run_config.judge_provider` is `vertex`
+- `benchmark_full.json -> run_config.judge_model` is `gemini-3-flash-preview`
+- `benchmark_full.json -> judge_transport.n_llm_success_cases` equals completed cases when `--judge-modes` includes `llm`
+- `benchmark_full.json -> target_output_health.json_parse_failed_turns` is `0`
+
+### Open-weight troubleshooting
+
+- If `/v1/models` works but the benchmark gets `404 model not found`, make `--target-model` exactly match vLLM `--served-model-name`.
+- If image requests fail, confirm the model and server support OpenAI-compatible multimodal chat image content.
+- If the process runs out of GPU memory, lower `--max-model-len`, lower vLLM `--gpu-memory-utilization`, or use the 4B model.
+- If Vertex judge authentication fails, confirm `VERTEX_API_KEY` is set and do not pass `--api-key dummy`; use `DASHSCOPE_API_KEY=dummy` for local candidate servers.
+- If you only want to debug dataset paths and image resolution, use `--judge-modes rule` first, then rerun with the LLM judge for reproducible paper-style numbers.
 
 ## Example
 
@@ -49,7 +220,8 @@ python run_main.py \
   --out-dir /path/to/runs \
   --provider openai \
   --target-model gpt-5.4 \
-  --judge-modes both \
+  --judge-provider vertex \
+  --judge-model gemini-3-flash-preview \
   --reveal-unit eurorad \
   --budget 6
 ```
