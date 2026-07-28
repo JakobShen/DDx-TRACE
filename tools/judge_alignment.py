@@ -7,8 +7,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from judge import JudgeRunner
-from pipeline_main import canonicalize_case, deduplicate_preserve_order, ensure_dir, normalize_key, normalize_space
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from ddx_trace.judge import JudgeRunner
+from ddx_trace.pipeline import canonicalize_case, deduplicate_preserve_order, ensure_dir, normalize_key, normalize_space
 from run_main import (
     build_provider,
     file_sha256,

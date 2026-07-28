@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Prepare the model-independent DDx-TRACE code and dataset.
 usage() {
   echo "Usage: $0 --work-dir PATH [--code-url URL] [--data-url URL]"
 }

@@ -15,9 +15,7 @@ envs/
 !.env.example
 
 # Secrets and cloud credentials
-aa_api_key.env.sh
 *api_key*.env*
-!aa_api_key.env.example
 *service-account*.json
 *service_account*.json
 *credentials*.json

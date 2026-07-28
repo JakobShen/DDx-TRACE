@@ -2,18 +2,21 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --env PATH --model PATH [--served-name NAME] [--port N]"
-  echo "          [--max-model-len N] [--gpu-memory-utilization F]"
+  echo "Usage: $0 --env PATH --model PATH [--served-name NAME] [--host HOST] [--port N]"
+  echo "          [--dtype VALUE] [--max-model-len N] [--max-num-seqs N]"
+  echo "          [--gpu-memory-utilization F] [--vllm-arg TOKEN]..."
   echo "          [--tmp-dir PATH] [--cache-dir PATH] [--log PATH] [--pid-file PATH]"
-  echo "          [--background] [--wait-seconds N]"
+  echo "          [--background] [--wait-seconds N] [--conda PATH]"
 }
 
 env_path=""
 model_path=""
-served_name="medgemma-27b-it"
+served_name=""
 host="127.0.0.1"
 port="8000"
+dtype="auto"
 max_model_len="16384"
+max_num_seqs="1"
 gpu_memory_utilization="0.90"
 log_path=""
 pid_file=""
@@ -22,6 +25,7 @@ wait_seconds="0"
 tmp_dir="/tmp/${USER:-ddx-user}/ddx-vllm"
 cache_dir="$PWD/.vllm-cache"
 conda_bin="${CONDA_EXE:-}"
+extra_vllm_args=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -30,8 +34,11 @@ while [[ $# -gt 0 ]]; do
     --served-name) served_name="$2"; shift 2 ;;
     --host) host="$2"; shift 2 ;;
     --port) port="$2"; shift 2 ;;
+    --dtype) dtype="$2"; shift 2 ;;
     --max-model-len) max_model_len="$2"; shift 2 ;;
+    --max-num-seqs) max_num_seqs="$2"; shift 2 ;;
     --gpu-memory-utilization) gpu_memory_utilization="$2"; shift 2 ;;
+    --vllm-arg) extra_vllm_args+=("$2"); shift 2 ;;
     --tmp-dir) tmp_dir="$2"; shift 2 ;;
     --cache-dir) cache_dir="$2"; shift 2 ;;
     --log) log_path="$2"; shift 2 ;;
@@ -47,6 +54,8 @@ done
 [[ -n "$env_path" && -n "$model_path" ]] || { usage >&2; exit 2; }
 [[ -x "$env_path/bin/python" ]] || { echo "Invalid environment: $env_path" >&2; exit 1; }
 [[ -f "$model_path/config.json" ]] || { echo "Model config not found: $model_path" >&2; exit 1; }
+model_path="$(cd "$model_path" && pwd)"
+served_name="${served_name:-${model_path##*/}}"
 command -v nvidia-smi >/dev/null || { echo "No NVIDIA GPU is visible" >&2; exit 1; }
 if [[ -z "$conda_bin" ]]; then
   conda_bin="$(command -v conda || true)"
@@ -67,7 +76,7 @@ tmp_dir="$(cd "$tmp_dir" && pwd)"
 cache_dir="$(cd "$cache_dir" && pwd)"
 if [[ "${#tmp_dir}" -gt 60 ]]; then
   echo "vLLM TMPDIR is too long for ZeroMQ IPC sockets: $tmp_dir" >&2
-  echo "Use --tmp-dir with a short node-local path such as /tmp/$USER/ddx-vllm" >&2
+  echo "Use --tmp-dir with a short local path such as /tmp/$USER/ddx-vllm" >&2
   exit 1
 fi
 
@@ -87,11 +96,14 @@ cmd=(
   --host "$host"
   --port "$port"
   --served-model-name "$served_name"
-  --dtype bfloat16
+  --dtype "$dtype"
   --gpu-memory-utilization "$gpu_memory_utilization"
   --max-model-len "$max_model_len"
-  --max-num-seqs 1
+  --max-num-seqs "$max_num_seqs"
 )
+if (( ${#extra_vllm_args[@]} > 0 )); then
+  cmd+=("${extra_vllm_args[@]}")
+fi
 
 if [[ "$background" != "true" ]]; then
   exec "${cmd[@]}"

@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import httpx
 
-from pipeline_main import (
+from ddx_trace.pipeline import (
     AGENT_SYSTEM_PROMPT,
     CanonicalCase,
     ImagePayload,
@@ -31,7 +31,7 @@ from pipeline_main import (
     normalize_key,
     normalize_space,
 )
-from judge import (
+from ddx_trace.judge import (
     JUDGE_JSON_SCHEMA,
     JUDGE_JSON_SCHEMA_DESCRIPTION,
     JUDGE_JSON_SCHEMA_NAME,
@@ -549,7 +549,7 @@ def summarize_clinical_history_redaction(raw_cases: Sequence[Dict[str, Any]]) ->
 
 def build_code_version() -> Dict[str, Any]:
     here = Path(__file__).resolve().parent
-    files = ["run_main.py", "pipeline_main.py", "judge.py"]
+    files = ["run_main.py", "ddx_trace/pipeline.py", "ddx_trace/judge.py"]
     return {
         "schema_version": "main_benchmark_v4_eurorad_best_effort_ambiguity",
         "agent_schema_version": AGENT_TURN_JSON_SCHEMA_NAME,

@@ -1,4 +1,6 @@
 
+"""Dataset adaptation, evidence matching, and benchmark metrics."""
+
 from __future__ import annotations
 
 import json

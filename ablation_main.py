@@ -8,8 +8,9 @@ Implemented settings:
 - gold-order-reveal: evidence units are passively revealed one at a time by preferred/gold order.
 - oracle-findings: official request-based sequential setting, but matched evidence reveals image + metadata + oracle imaging findings.
 
-The official sequential setting remains in run_main.py. This file reuses provider adapters,
-canonicalization, judge setup, and metric utilities from run_main.py / pipeline_main.py.
+The official sequential setting remains in run_main.py. This file reuses
+provider adapters, canonicalization, judge setup, and metric utilities from
+run_main.py and the ddx_trace package.
 """
 from __future__ import annotations
 
@@ -21,8 +22,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from judge import JudgeRunner
-from pipeline_main import (
+from ddx_trace.judge import JudgeRunner
+from ddx_trace.pipeline import (
     CanonicalCase,
     CaseResult,
     ExamBundle,
@@ -690,7 +691,12 @@ def compute_judge_mode_agreement(case_results: Sequence[Dict[str, Any]]) -> Dict
 
 def build_ablation_code_version() -> Dict[str, Any]:
     root = Path(__file__).resolve().parent
-    files = ["ablation_main.py", "pipeline_main.py", "run_main.py", "judge.py"]
+    files = [
+        "ablation_main.py",
+        "run_main.py",
+        "ddx_trace/pipeline.py",
+        "ddx_trace/judge.py",
+    ]
     return {
         "schema_version": "ablation_benchmark_v2_random_gold_oracle",
         "settings_implemented": ALL_SETTINGS,

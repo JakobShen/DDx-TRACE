@@ -21,7 +21,7 @@ def main() -> int:
     parser.add_argument("run_path", type=Path)
     parser.add_argument("--expected-cases", type=int, default=3)
     parser.add_argument("--expected-provider", default="vllm")
-    parser.add_argument("--expected-model", default="medgemma-27b-it")
+    parser.add_argument("--expected-model", required=True)
     args = parser.parse_args()
 
     full_path = latest_full(args.run_path)

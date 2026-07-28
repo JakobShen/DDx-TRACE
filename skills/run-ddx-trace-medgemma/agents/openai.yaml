@@ -1,4 +1,0 @@
-interface:
-  display_name: "Run DDx-TRACE with MedGemma"
-  short_description: "Reproduce DDx-TRACE with local MedGemma and vLLM"
-  default_prompt: "Use $run-ddx-trace-medgemma to set up MedGemma with vLLM and validate a three-case DDx-TRACE run."

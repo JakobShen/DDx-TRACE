@@ -5,8 +5,17 @@ update a four-item differential diagnosis, and reach the correct diagnosis
 with an efficient investigation path.
 
 - Dataset: [Anonym001/DDx-TRACE](https://huggingface.co/datasets/Anonym001/DDx-TRACE)
-- Open-source MedGemma: [README_MEDGEMMA.md](README_MEDGEMMA.md)
+- Open-source models with vLLM:
+  [docs/OPEN_SOURCE_MODELS.md](docs/OPEN_SOURCE_MODELS.md)
 - Benchmark and metric details: [docs/BENCHMARK_REFERENCE.md](docs/BENCHMARK_REFERENCE.md)
+
+## Repository layout
+
+- `run_main.py`: main benchmark entrypoint
+- `ablation_main.py`: optional ablation entrypoint
+- `ddx_trace/`: benchmark, evidence-matching, and judging implementation
+- `tools/`: optional dataset-preparation and analysis utilities
+- `skills/run-ddx-trace-vllm/`: agent workflow for open-source models
 
 ## Install
 
@@ -57,11 +66,13 @@ python run_main.py \
 Supported providers are `openai`, `anthropic`, `gemini`, `vertex`, `qwen`,
 and `vllm`. Run `python run_main.py --help` for optional arguments.
 
-## Run MedGemma locally
+## Run an open-source model locally
 
-Use the tested vLLM 0.26.0 workflow in
-[README_MEDGEMMA.md](README_MEDGEMMA.md). An agent can execute the companion
-[MedGemma skill](skills/run-ddx-trace-medgemma/SKILL.md).
+DDx-TRACE can evaluate compatible multimodal open-source models through a
+local vLLM server. See
+[docs/OPEN_SOURCE_MODELS.md](docs/OPEN_SOURCE_MODELS.md) for the general
+workflow and a tested MedGemma example. Agents can use the companion
+[vLLM skill](skills/run-ddx-trace-vllm/SKILL.md).
 
 ## Add the LLM judge
 
@@ -108,5 +119,5 @@ python ablation_main.py --help
 ## Data and credentials
 
 This repository contains code and documentation only. Do not commit datasets,
-medical images, generated runs, API keys, or service-account files. Copy
-`aa_api_key.env.example` to a local untracked file when needed.
+medical images, generated runs, API keys, or service-account files. Provide
+credentials through environment variables or your platform's secret manager.

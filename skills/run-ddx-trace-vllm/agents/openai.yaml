@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run DDx-TRACE with vLLM"
+  short_description: "Evaluate open-source multimodal models through vLLM"
+  default_prompt: "Use $run-ddx-trace-vllm to serve a compatible open-source model with vLLM and validate a three-case DDx-TRACE run."

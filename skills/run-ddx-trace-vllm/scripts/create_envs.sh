@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Create isolated benchmark and generic vLLM serving environments.
 usage() {
   echo "Usage: $0 --work-dir PATH --repo-dir PATH [--conda PATH]"
 }

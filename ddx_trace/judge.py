@@ -1,3 +1,5 @@
+"""Deterministic and model-based DDx-TRACE judging."""
+
 from __future__ import annotations
 
 import json

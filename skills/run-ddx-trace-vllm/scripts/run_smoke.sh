@@ -3,14 +3,16 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 --repo PATH --data-root PATH --benchmark-env PATH"
-  echo "          [--target-model NAME] [--base-url URL] [--out-dir PATH]"
+  echo "          --target-model NAME [--model-label LABEL] [--base-url URL]"
+  echo "          [--out-dir PATH]"
   echo "          [--limit N] [--max-output-tokens N] [--conda PATH]"
 }
 
 repo=""
 data_root=""
 benchmark_env=""
-target_model="medgemma-27b-it"
+target_model=""
+model_label=""
 base_url="http://127.0.0.1:8000/v1"
 out_dir=""
 limit="3"
@@ -23,6 +25,7 @@ while [[ $# -gt 0 ]]; do
     --data-root) data_root="$2"; shift 2 ;;
     --benchmark-env) benchmark_env="$2"; shift 2 ;;
     --target-model) target_model="$2"; shift 2 ;;
+    --model-label) model_label="$2"; shift 2 ;;
     --base-url) base_url="$2"; shift 2 ;;
     --out-dir) out_dir="$2"; shift 2 ;;
     --limit) limit="$2"; shift 2 ;;
@@ -33,7 +36,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "$repo" && -n "$data_root" && -n "$benchmark_env" ]] || {
+[[ -n "$repo" && -n "$data_root" && -n "$benchmark_env" && -n "$target_model" ]] || {
   usage >&2
   exit 2
 }
@@ -41,7 +44,8 @@ repo="$(cd "$repo" && pwd)"
 data_root="$(cd "$data_root" && pwd)"
 benchmark_env="$(cd "$benchmark_env" && pwd)"
 data_path="$data_root/data/eurorad_neuro_01_release.json"
-out_dir="${out_dir:-$repo/runs/medgemma27b_rule_smoke}"
+model_label="${model_label:-$target_model}"
+out_dir="${out_dir:-$repo/runs/vllm_rule_smoke_$(date -u +%Y%m%d_%H%M%S)}"
 mkdir -p "$out_dir"
 out_dir="$(cd "$out_dir" && pwd)"
 [[ -f "$repo/run_main.py" && -f "$data_path" && -d "$data_root/images" ]] || {
@@ -68,7 +72,7 @@ curl --fail --silent "${base_url%/v1}/health" >/dev/null || {
     --provider vllm \
     --base-url "$base_url" \
     --target-model "$target_model" \
-    --model-label "MedGemma 27B IT" \
+    --model-label "$model_label" \
     --judge-modes rule \
     --max-output-tokens "$max_output_tokens" \
     --timeout 300 \

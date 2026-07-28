@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize EuroRad benchmark input data and mask obvious clinical-history leakage."""
+"""Prepare normalized EuroRad benchmark input data."""
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,4 @@
-# Revised patch changelog
+# Implementation changelog
 
 ## Protocol / evidence unit
 - Added `--reveal-unit {eurorad,figure}`; default is now `eurorad`.
@@ -34,7 +34,7 @@
 - Request outcome summary now includes per-case request outcome counts.
 
 ## Input data helper
-- Added `fix_eurorad_inputdata.py` and a generated `eurorad_neuro_01_fixed.json`.
+- Added `tools/prepare_eurorad_input.py` for dataset normalization.
 - Standardizes `difficulty` / `rarity` labels.
 - Redacts targeted direct clinical-history leakage while preserving `original_clinical_history`.
 

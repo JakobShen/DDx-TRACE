@@ -1,4 +1,7 @@
-# Tested stack
+# Tested example: MedGemma 27B
+
+Use this configuration as a known-good example of the generic vLLM workflow,
+not as a requirement for DDx-TRACE.
 
 Validation date: 2026-07-27
 
@@ -32,11 +35,10 @@ Three-case rule-judge validation:
 - Blocking dataset preflight errors: 0
 - Final validator result: passed
 
-On the tested quota-constrained cluster, all serving caches had to use project
-storage. The successful server process set `XDG_CACHE_HOME`, `HF_HOME`,
+The successful server process set `XDG_CACHE_HOME`, `HF_HOME`,
 `FLASHINFER_WORKSPACE_BASE`, `TRITON_CACHE_DIR`,
-`TORCHINDUCTOR_CACHE_DIR`, and `CUDA_CACHE_PATH`; its short ZeroMQ `TMPDIR`
-used node-local `/tmp`.
+`TORCHINDUCTOR_CACHE_DIR`, and `CUDA_CACHE_PATH` under the selected cache
+directory. It used a short local `TMPDIR` for ZeroMQ IPC.
 
 Top-level benchmark dependencies resolved during validation:
 

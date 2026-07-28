@@ -14,8 +14,9 @@ The official sequential setting uses:
 - deterministic rule scoring, LLM-judge scoring, or both;
 - a default request budget of 6 and trajectory horizon of `budget + 2`.
 
-`run_main.py` is the main entrypoint. `pipeline_main.py` implements dataset
-adaptation, evidence matching, preflight, and metrics. `judge.py` implements
+`run_main.py` is the main entrypoint. `ddx_trace/pipeline.py` implements
+dataset adaptation, evidence matching, preflight, and metrics.
+`ddx_trace/judge.py` implements
 the LLM and deterministic judges.
 
 ## Provider behavior
