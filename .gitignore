@@ -9,6 +9,7 @@ __pycache__/
 .venv/
 venv/
 env/
+envs/
 .env
 .env.*
 !.env.example
@@ -28,11 +29,25 @@ aa_api_key.env.sh
 # Data, images, and benchmark outputs
 runs/
 images/
+DDx-TRACE-data/
+models/
+model/
 eurorad_neuro*.json
 *.zip
 *.tar
+*.zst
 *.tar.gz
 *.tgz
+*.safetensors
+pytorch_model*.bin
+
+# Local serving caches and logs
+cache/
+.cache/
+.vllm-cache/
+.huggingface/
+*.log
+*.pid
 
 # Local/editor files
 .DS_Store

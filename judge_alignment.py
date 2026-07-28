@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", required=True, help="Output root for alignment logs/results.")
     parser.add_argument("--data-path", default=None, help="Override dataset path. Defaults to source run_config.data_path.")
     parser.add_argument("--image-root", default=None, help="Override image root. Defaults to source run_config.image_root.")
-    parser.add_argument("--judge-provider", default="openai", choices=["openai", "anthropic", "gemini", "vertex", "qwen"])
+    parser.add_argument("--judge-provider", default="openai", choices=["openai", "anthropic", "gemini", "vertex", "qwen", "vllm"])
     parser.add_argument("--judge-model", default="gpt-5.4-mini")
     parser.add_argument("--judge-api-key", default=None)
     parser.add_argument("--judge-base-url", default=None)

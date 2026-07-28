@@ -767,7 +767,7 @@ class OpenAIResponsesProvider(ProviderBase):
 
 
 # =========================
-# OpenAI-compatible chat (Qwen fallback / local gateways)
+# OpenAI-compatible chat (Qwen fallback / vLLM / local gateways)
 # =========================
 
 class OpenAICompatibleChatSession(SessionProtocol):
@@ -1677,6 +1677,8 @@ def env_default(provider: str) -> tuple[str, Optional[str]]:
         return os.getenv("VERTEX_API_KEY", ""), None
     if provider == "qwen":
         return os.getenv("DASHSCOPE_API_KEY", ""), os.getenv("DASHSCOPE_BASE_URL")
+    if provider == "vllm":
+        return os.getenv("VLLM_API_KEY", "EMPTY"), os.getenv("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
     raise ValueError(f"Unsupported provider: {provider}")
 
 
@@ -1736,6 +1738,8 @@ def build_provider(
         return VertexGenerateContentProvider(settings)
     if provider_name == "qwen":
         return QwenProvider(settings)
+    if provider_name == "vllm":
+        return OpenAICompatibleChatProvider(settings)
     raise ValueError(f"Unsupported provider: {provider_name}")
 
 
@@ -1959,9 +1963,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-path", required=True, help="Path to eurorad_neuro_01 JSON.")
     parser.add_argument("--image-root", required=True, help="Root directory for local images referenced by image_paths.")
     parser.add_argument("--out-dir", required=True, help="Directory for run outputs.")
-    parser.add_argument("--provider", required=True, choices=["openai", "anthropic", "gemini", "vertex", "qwen"])
+    parser.add_argument("--provider", required=True, choices=["openai", "anthropic", "gemini", "vertex", "qwen", "vllm"])
     parser.add_argument("--target-model", required=True, help="Model name for the target agent.")
-    parser.add_argument("--judge-provider", default="vertex", choices=["openai", "anthropic", "gemini", "vertex", "qwen"])
+    parser.add_argument("--judge-provider", default="vertex", choices=["openai", "anthropic", "gemini", "vertex", "qwen", "vllm"])
     parser.add_argument("--judge-model", default="gemini-3-flash-preview", help="Model name for the judge. Default: gemini-3-flash-preview on Vertex.")
     parser.add_argument("--judge-modes", default="both", choices=["both", "llm", "rule"], help="Enable LLM judge, rule-based judge, or both (default).")
     parser.add_argument("--judge-structured-output", default="auto", choices=["auto", "always", "never"], help="Judge-only structured-output policy: auto tries provider-native JSON schema first and falls back to prompt-JSON; always requires native structured output; never disables it.")

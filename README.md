@@ -1,25 +1,16 @@
 # DDx-TRACE
 
-DDx-TRACE is a sequential diagnostic benchmark for active evidence acquisition in radiology cases. This public release contains the benchmark code and reproduction instructions; datasets, images, run outputs, credentials, and machine-specific launchers are intentionally excluded.
+DDx-TRACE evaluates whether a model can actively request radiology evidence,
+update a four-item differential diagnosis, and reach the correct diagnosis
+with an efficient investigation path.
 
-This package implements the **official main experiment** aligned to the paper:
+- Dataset: [Anonym001/DDx-TRACE](https://huggingface.co/datasets/Anonym001/DDx-TRACE)
+- Open-source MedGemma: [README_MEDGEMMA.md](README_MEDGEMMA.md)
+- Benchmark and metric details: [docs/BENCHMARK_REFERENCE.md](docs/BENCHMARK_REFERENCE.md)
 
-- hidden inventory
-- open-ended free-form exam requests
-- image evidence plus minimal metadata target-model access (no captions/findings/final diagnosis revealed)
-- turn-wise updated 4-item differential diagnosis with probabilities
-- dual scoring modes: **LLM judge** and **deterministic rule-based judge**
-- Table 2 metrics + additional main-run diagnostics
+## Install
 
-## Files
-
-- `run_main.py` — entrypoint, provider adapters, run orchestration, compact output packaging
-- `pipeline_main.py` — official main pipeline, dataset adaptation, matcher, metrics, preflight
-- `judge.py` — single-call LLM judge + deterministic scorer
-
-## Quick start
-
-Create a clean Python environment and install the runtime dependencies:
+Python 3.10 is recommended.
 
 ```bash
 python -m venv .venv
@@ -27,391 +18,95 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Provide your own benchmark JSON and local images. The dataset release is available at <https://huggingface.co/datasets/Anonym001/DDx-TRACE>. After downloading, `--data-path` should point to the case JSON and `--image-root` should point either to the dataset project root or directly to the `images/` directory.
-
-Copy the environment template and fill in only the providers you plan to use:
+## Get the data
 
 ```bash
-cp aa_api_key.env.example .env.local
-source .env.local
+git clone https://huggingface.co/datasets/Anonym001/DDx-TRACE DDx-TRACE-data
+cd DDx-TRACE-data
+git lfs pull
+sha256sum -c data/DDx-TRACE-images.tar.zst.sha256
+tar --use-compress-program=unzstd -xf data/DDx-TRACE-images.tar.zst
+cd ..
 ```
 
-For the paper-style LLM judge, the default is Vertex Gemini:
+After extraction, these paths must exist:
 
-```bash
-export VERTEX_API_KEY="..."
+```text
+DDx-TRACE-data/data/eurorad_neuro_01_release.json
+DDx-TRACE-data/images/
 ```
 
-Run a two-case smoke test before any full run:
+## Run a smoke test
+
+Set the credential for the target provider, then run three cases with the
+deterministic rule judge:
 
 ```bash
-python run_main.py \
-  --data-path /path/to/eurorad_neuro_01.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir runs/smoke_openai \
-  --provider openai \
-  --target-model gpt-5.4 \
-  --judge-provider vertex \
-  --judge-model gemini-3-flash-preview \
-  --max-output-tokens 8192 \
-  --judge-max-output-tokens 8192 \
-  --limit 2
-```
-
-## Generation defaults
-
-The benchmark now uses **provider/model default sampling**. The runner does **not** send `temperature` to any provider. Deprecated `--temperature` and `--judge-temperature` are accepted only for compatibility and are recorded as ignored.
-
-Reasoning/thinking controls are also omitted by default. If you do not pass `--reasoning-effort` or `--gemini-thinking-level`, the request body does not include these parameters and the provider/model default behavior applies.
-
-## Structured output
-
-- Target agent: defaults to `--agent-structured-output auto`, which uses provider-native JSON schema when available and falls back to prompt-JSON if unsupported.
-- LLM judge: defaults to `--judge-structured-output auto`, also using provider-native JSON schema with prompt-JSON fallback.
-
-## Supported providers
-
-Target model and LLM judge model can be selected independently.
-
-- `openai` — Responses API with `previous_response_id`; structured output uses `text.format` JSON Schema
-- `anthropic` — Messages API with local history management; structured output uses `output_config.format`
-- `gemini` — `generateContent` with local history management; structured output uses `responseJsonSchema`
-- `vertex` — Vertex AI Gemini through `google-genai` express mode; structured output uses `response_json_schema`
-- `qwen` — DashScope or any OpenAI-compatible local gateway; `--qwen-transport auto|chat|responses`; structured output uses chat `response_format` JSON Schema or Responses `text.format`
-
-### Important Qwen note
-
-For the benchmark, local images are expected through `--image-root`. In `auto` mode, the Qwen adapter defaults to the OpenAI-compatible **chat** transport because this is the safest path for local image payloads. If you use hosted/public image URLs and want server-side response chaining, pass `--qwen-transport responses`.
-
-The same `qwen` adapter is also the intended path for open-weight vision-language models served through vLLM, SGLang, LM Studio, or another OpenAI-compatible `/v1/chat/completions` server.
-
-## Open-weight models with vLLM
-
-Reviewer-facing reproduction of open-source model runs should use the OpenAI-compatible local-server path. The benchmark sends text plus local images as base64 `image_url` chat content, so the model server must support multimodal chat completions.
-
-### MedGemma setup
-
-MedGemma weights are hosted on Hugging Face. Accept the model terms for the specific model you use, then authenticate your machine:
-
-```bash
-huggingface-cli login
-```
-
-Install vLLM in a separate serving environment:
-
-```bash
-python -m venv .venv-vllm
-source .venv-vllm/bin/activate
-pip install vllm
-```
-
-Start a MedGemma 27B IT server:
-
-```bash
-vllm serve google/medgemma-27b-it \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --served-model-name medgemma-27b-it \
-  --trust-remote-code \
-  --dtype auto \
-  --gpu-memory-utilization 0.90 \
-  --max-model-len 16384
-```
-
-For MedGemma 1.5 4B IT, replace the model path and served name:
-
-```bash
-vllm serve google/medgemma-1.5-4b-it \
-  --host 127.0.0.1 \
-  --port 8000 \
-  --served-model-name medgemma-1.5-4b-it \
-  --trust-remote-code \
-  --dtype auto \
-  --gpu-memory-utilization 0.90 \
-  --max-model-len 16384
-```
-
-The original MedGemma 4B IT model can be run the same way with `google/medgemma-4b-it`.
-
-### MedGemma smoke test
-
-In the benchmark environment, set a dummy candidate key through the environment, not through `--api-key`. This matters because `--api-key` is also used as the judge key when `--judge-api-key` is omitted.
-
-```bash
-source .venv/bin/activate
-export DASHSCOPE_API_KEY="dummy"
-export VERTEX_API_KEY="..."
+export OPENAI_API_KEY="..."
 
 python run_main.py \
-  --data-path /path/to/eurorad_neuro_01.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir runs/medgemma27b_smoke \
-  --provider qwen \
-  --target-model medgemma-27b-it \
-  --model-label "MedGemma 27B IT" \
-  --qwen-transport chat \
-  --base-url http://127.0.0.1:8000/v1 \
-  --judge-provider vertex \
-  --judge-model gemini-3-flash-preview \
-  --max-output-tokens 8192 \
-  --judge-max-output-tokens 8192 \
-  --limit 2
-```
-
-If the local server rejects OpenAI JSON-schema `response_format`, rerun with:
-
-```bash
---agent-structured-output never
-```
-
-This keeps the target model on prompt-JSON output while leaving the Vertex Gemini judge unchanged.
-
-### MedGemma full run
-
-After the smoke test succeeds, run the full benchmark by removing `--limit` and writing to a fresh output directory:
-
-```bash
-python run_main.py \
-  --data-path /path/to/eurorad_neuro_01.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir runs/medgemma27b_full \
-  --provider qwen \
-  --target-model medgemma-27b-it \
-  --model-label "MedGemma 27B IT" \
-  --qwen-transport chat \
-  --base-url http://127.0.0.1:8000/v1 \
-  --judge-provider vertex \
-  --judge-model gemini-3-flash-preview \
-  --max-output-tokens 8192 \
-  --judge-max-output-tokens 8192 \
-  --continue-on-error
-```
-
-For another open-weight model, keep the same benchmark command and change only the vLLM `--served-model-name`, the benchmark `--target-model`, and `--model-label`.
-
-### Smoke-test acceptance checks
-
-A valid two-case smoke should produce an output subdirectory under `--out-dir` containing `benchmark_summary.json`, `benchmark_full.json`, per-case logs, turn raw/normalized files, and final metrics.
-
-Check these fields before launching a full run:
-
-- `benchmark_full.json -> run_progress.is_final` is `true`
-- `benchmark_full.json -> run_progress.completed_cases` equals the requested smoke limit
-- `benchmark_full.json -> run_progress.failed_cases` is `0`
-- `benchmark_full.json -> run_config.judge_provider` is `vertex`
-- `benchmark_full.json -> run_config.judge_model` is `gemini-3-flash-preview`
-- `benchmark_full.json -> judge_transport.n_llm_success_cases` equals completed cases when `--judge-modes` includes `llm`
-- `benchmark_full.json -> target_output_health.json_parse_failed_turns` is `0`
-
-### Open-weight troubleshooting
-
-- If `/v1/models` works but the benchmark gets `404 model not found`, make `--target-model` exactly match vLLM `--served-model-name`.
-- If image requests fail, confirm the model and server support OpenAI-compatible multimodal chat image content.
-- If the process runs out of GPU memory, lower `--max-model-len`, lower vLLM `--gpu-memory-utilization`, or use the 4B model.
-- If Vertex judge authentication fails, confirm `VERTEX_API_KEY` is set and do not pass `--api-key dummy`; use `DASHSCOPE_API_KEY=dummy` for local candidate servers.
-- If you only want to debug dataset paths and image resolution, use `--judge-modes rule` first, then rerun with the LLM judge for reproducible paper-style numbers.
-
-## Example
-
-```bash
-python run_main.py \
-  --data-path /path/to/eurorad_neuro_01.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir /path/to/runs \
-  --provider openai \
-  --target-model gpt-5.4 \
-  --judge-provider vertex \
-  --judge-model gemini-3-flash-preview \
-  --reveal-unit eurorad \
-  --budget 6
-```
-
-By default, fixed-horizon trajectory metrics use `T_max = budget + 2`. To override:
-
-```bash
---trajectory-horizon 8 --diagnostic-threshold 0.6666667
-```
-
-### Rule-only preflight / pilot mode
-
-```bash
-python run_main.py \
-  --data-path /path/to/eurorad_neuro_01.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir /path/to/runs \
+  --data-path DDx-TRACE-data/data/eurorad_neuro_01_release.json \
+  --image-root DDx-TRACE-data \
+  --out-dir runs/openai-smoke \
   --provider openai \
   --target-model gpt-5.4 \
   --judge-modes rule \
-  --limit 20 \
-  --budget 6
+  --limit 3
 ```
 
+Supported providers are `openai`, `anthropic`, `gemini`, `vertex`, `qwen`,
+and `vllm`. Run `python run_main.py --help` for optional arguments.
 
-## Ablation studies
+## Run MedGemma locally
 
-Non-official ablations are implemented in `ablation_main.py` so the official sequential code path remains unchanged.
+Use the tested vLLM 0.26.0 workflow in
+[README_MEDGEMMA.md](README_MEDGEMMA.md). An agent can execute the companion
+[MedGemma skill](skills/run-ddx-trace-medgemma/SKILL.md).
 
-Implemented settings:
+## Add the LLM judge
 
-- `history-only`: clinical history only; no images and no requests.
-- `all-images-at-once`: all requestable EuroRad-style evidence units are attached in one call with minimal metadata.
-- `random-order-reveal`: no active requests; evidence units are passively revealed one at a time in deterministic random order, up to the request budget, after a history-only baseline turn.
-- `gold-order-reveal`: no active requests; evidence units are passively revealed one at a time by preferred/gold order, up to the request budget, after a history-only baseline turn.
-- `oracle-findings`: active request-based sequential setting; when a request matches, the target receives the image, minimal metadata, and oracle imaging findings for the matched evidence unit.
-
-Run all ablations:
+After the rule-only smoke test passes:
 
 ```bash
-python ablation_main.py \
-  --setting all \
-  --data-path /path/to/eurorad_neuro_01_fixed.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir /path/to/ablations \
-  --provider openai \
-  --target-model gpt-5.4 \
-  --reveal-unit eurorad \
-  --budget 6
+export VERTEX_API_KEY="..."
 ```
 
-Run one setting:
+Replace `--judge-modes rule` with:
 
 ```bash
-python ablation_main.py \
-  --setting oracle-findings \
-  --data-path /path/to/eurorad_neuro_01_fixed.json \
-  --image-root /path/to/project_root_or_images_dir \
-  --out-dir /path/to/ablations \
-  --provider openai \
-  --target-model gpt-5.4
+--judge-modes both \
+--judge-provider vertex \
+--judge-model gemini-3-flash-preview
 ```
 
-For passive ablations (`history-only`, `all-images-at-once`, `random-order-reveal`, `gold-order-reveal`), route/request metrics are not applicable and are marked undefined. For `oracle-findings`, route/request metrics remain applicable because the agent still actively requests evidence.
+Remove `--limit 3` only after the smoke test succeeds.
 
-Judge defaults for both official and ablation entrypoints are fixed to:
+## Outputs
+
+Each run creates a timestamped directory containing:
+
+- `benchmark_summary.json`: configuration, preflight checks, failures, and
+  aggregate metrics;
+- `benchmark_full.json`: the summary plus per-case and per-turn traces.
+
+A valid smoke test has:
+
+- `run_progress.is_final = true`;
+- three completed and zero failed cases;
+- no blocking preflight error;
+- `target_output_health.json_parse_failed_turns = 0`.
+
+## Ablations
+
+Use `ablation_main.py` for `history-only`, `all-images-at-once`,
+`random-order-reveal`, `gold-order-reveal`, and `oracle-findings`.
 
 ```bash
---judge-provider vertex --judge-model gemini-3-flash-preview
+python ablation_main.py --help
 ```
 
-## Environment variables
+## Data and credentials
 
-- OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
-- Anthropic: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
-- Gemini: `GEMINI_API_KEY` or `GOOGLE_API_KEY`, optional `GEMINI_BASE_URL`
-- Vertex AI Gemini: `VERTEX_API_KEY`
-- Qwen/DashScope: `DASHSCOPE_API_KEY`, optional `DASHSCOPE_BASE_URL`
-
-## Image root handling
-
-`--image-root` can point either to the dataset project root **or** directly to the `images/` directory.
-The path resolver handles both `images/12789/f1_a.jpg`-style relative paths and paths already rooted inside `images/`.
-
-## Main outputs
-
-Each run writes a timestamped directory with two main result files:
-
-- `benchmark_summary.json`
-  - run config and code SHA256 hashes
-  - dataset preflight
-  - failures
-  - aggregate metrics / Table 2 rows for every enabled scoring mode
-  - target output health: parse warnings, schema fallback counts, probability renormalization counts
-  - request outcome breakdown: matched, no-match, duplicate, unavailable, already-revealed, etc. Broad/tied requests that have an eligible above-threshold candidate are resolved to the best-scoring bundle rather than counted invalid.
-  - judge transport summary and judge-mode agreement summary
-  - metric notes and null/worst-case policy
-- `benchmark_full.json`
-  - everything in `benchmark_summary.json`
-  - full per-case logs (turns, requests, judge outputs, metrics, debug metadata)
-
-## Implemented Table 2 metrics
-
-For each enabled scoring mode (`llm`, `rule`):
-
-- `S_dx`
-- `S_loc`
-- `S_ddx`
-- `S_ER`
-- `Opt_burden`
-- `Inv_req_rate`
-- `S_order`
-- `S_traj`
-- `S_conf`
-
-## Additional main-run outputs
-
-- `Brier_top1`
-- fixed-horizon trajectory metrics: `S_traj_dx_Tmax`, `S_traj_dx_actual`, `S_traj_conf_actual`, `S_traj_conf_Tmax`
-- timing metrics: `time_to_hit4`, `time_to_diagnostic_guess`, `time_to_clinically_acceptable_diagnosis`
-- optional/nonessential proxy metrics: `optional_request_rate`, `nonessential_request_rate_proxy`
-- average requests / turns
-- reliability bins for calibration plots
-- subgroup slices by difficulty / rarity / section / area of interest
-- dataset preflight
-- target output health
-- request outcome breakdown
-- judge agreement diagnostics when both `llm` and `rule` are enabled
-
-## Deterministic scorer design
-
-The rule-based scorer is intentionally strict and versioned.
-
-- structured JSON output is parsed deterministically
-- diagnosis strings are normalized with spelling harmonization and filler removal
-- multi-diagnosis strings are scored conservatively using the **first diagnosis concept only**
-- negated/empty diagnosis strings receive no credit
-- diagnosis buckets are derived from:
-  - the case-specific diagnosis reference answer
-  - quoted examples and case-specific accepted-term rubric prose in the 0–3 diagnosis rubric when present
-  - the reference DDx set from `item.mcq.options`
-- localization is scored component-wise from the structured reference answer
-- trajectory labels (`E/A/U`) and 0–3 trajectory diagnosis scores are produced deterministically from the same buckets
-
-## Benchmark-specific assumptions in code
-
-- reference DDx set for `S_ddx` is taken from `item.mcq.options`
-- default evidence unit is `eurorad`: each EuroRad `imaging_examination` / figure-protocol entry is one requestable evidence bundle. Routine MRI sequences such as T1/T2/FLAIR/STIR/DWI are not merged into a clinical study-level request.
-- exams with delayed/follow-up/post-treatment metadata are **not** automatically excluded when local images exist; explicit follow-up requests can match them
-- non-imaging evidence such as histopathology/photo/illustration is kept in provenance but excluded from imaging-route denominators
-- exams without accessible **local** images under `--image-root` are excluded from the official pool
-- unlabeled official exams are treated as `optional`
-- matched reveal passes **images + minimal metadata**: source figure, modality, acquisition, view, region, contrast, and timepoint metadata
-- duplicate requests count as invalid requests
-- ambiguous free-form requests are not penalized when at least one candidate exceeds the match threshold: the resolver reveals the highest-scoring EuroRad evidence unit and records the event as `matched_ambiguous_*_best_effort` in debug/request traces.
-- final diagnosis is the rank-1 diagnosis from the final differential list
-- `S_order` uses tie-aware pairwise concordance when matched comparable pairs exist. If the case has gold order structure but no matched comparable pair, it is `1` only when all essential exams were recovered (`S_ER = 1`); otherwise it is `0`. If the case has no gold order structure, it is structurally undefined.
-- primary `S_traj` is fixed-horizon top-1 diagnosis-rubric trajectory: average normalized diagnosis score over `T_max` turns, carrying the final answer forward after early stopping. Default `T_max = B + 2`.
-- older confidence-weighted belief trajectory is still logged as `S_traj_conf_actual` and `S_traj_conf_Tmax`; these can be negative and are not calibration metrics.
-- `time_to_hit4 = B + 2` when the exact diagnosis never appears in the four-way differential
-- `time_to_diagnostic_guess = T_max + 1` if the top-1 diagnosis never reaches the threshold `tau`
-- `time_to_clinically_acceptable_diagnosis = T_max + 1` if no turn satisfies both top-1 diagnosis score >= `tau` and EssentialRecall before the turn = 1
-- `nonessential_request_rate_proxy` uses optional-labeled matched exams because explicit unnecessary labels are unavailable in the current data
-- exported display metrics avoid bare `null`: structurally undefined metrics are shown as display `0` with explicit `defined=false` status and a raw counterpart preserved under `*_raw` fields
-
-## Calibration and null semantics
-
-- `p_max` is the final-turn top-1 probability after renormalizing the four reported probabilities to sum to 1.
-- Reliability bins summarize calibration, not route quality. `avg_p_max` is mean claimed confidence in a bin; `avg_S_dx` is mean realized normalized diagnosis score in the same bin.
-- When a reliability bin has `count = 0`, both `avg_p_max` and `avg_S_dx` are intrinsically undefined and remain `null`. They must not be imputed as `0`, because `0` would falsely imply observed low-confidence failures rather than an empty bin.
-- `S_conf` is separate from calibration. It is the final-turn confidence-weighted semantic alignment score over the whole four-item differential and can be negative.
-
-## Preflight gate
-
-Before any API calls, the runner validates that local image files can be resolved and that the official exam pool is non-empty. Blocking preflight errors abort the run by default and write a preflight-only `benchmark_summary.json` / `benchmark_full.json`. Use `--allow-preflight-errors` only for debugging.
-
-## Deterministic scorer version
-
-`rule_v8_rubric_extracted_terms` keeps exact gold aliases specific: relaxed/subset gold variants are scored as near-gold/acceptable rather than exact. It extracts straight/curly quoted rubric examples plus case-specific rubric prose patterns such as “acceptable phrasing includes”, “such as”, “e.g.”, and “or equivalent”. It does not use a separate hand-built diagnosis synonym dictionary. It emits both E/A/U trajectory labels and 0–3 trajectory diagnosis scores.
-
-## Evidence-unit convention
-
-The default benchmark setting is intentionally close to EuroRad. A requestable evidence unit is one source `imaging_examination` / figure-protocol entry, i.e. a EuroRad figure/protocol-level evidence bundle. This is not the same as hospital order entry for a complete clinical study. The benchmark preserves EuroRad-style sequence/protocol granularity: if EuroRad separates T1, T2, DWI/ADC, SWI/GRE, CTA, or post-contrast images into distinct entries, they remain separately requestable bundles. Therefore, a request may include sequence/acquisition/contrast when useful, e.g. `T2-weighted MRI lumbosacral spine`, `DWI/ADC MRI brain`, `SWI/GRE MRI brain`, `CTA head and neck`, or `non-contrast CT head`.
-
-Ambiguity is treated as a property of the EuroRad-style inventory, not as an agent error. If a broad or tied request has at least one eligible above-threshold candidate, the matcher reveals the best-scoring eligible bundle and logs the candidate scores plus the resolution reason, e.g. `matched_ambiguous_score_tie_best_effort`. The request is counted as matched, not invalid. Exact duplicate, already-revealed, unavailable, and no-match requests can still be invalid.
-
-To avoid unreasonable matches, the matcher applies a simple spine-level penalty: cervical, thoracic, lumbar, and lumbosacral spine requests are treated as distinct unless the request is generic (`MRI spine`). Generic spine requests can still be resolved best-effort rather than penalized as ambiguous.
-
-## Repository data policy
-
-This public-release repository contains code and documentation only. Datasets, medical images, generated run outputs, API key files, service-account credentials, and machine-specific launcher scripts are intentionally excluded. Provide your own dataset JSON and image root paths when running the benchmark.
-
-Copy `aa_api_key.env.example` to a local, untracked environment file and fill in only the providers you use. Never commit real API keys or cloud service-account JSON files.
+This repository contains code and documentation only. Do not commit datasets,
+medical images, generated runs, API keys, or service-account files. Copy
+`aa_api_key.env.example` to a local untracked file when needed.
