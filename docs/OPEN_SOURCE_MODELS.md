@@ -39,7 +39,7 @@ Install Git LFS, `zstd`, and Conda first.
 export WORK="/path/to/ddx-trace-work"
 mkdir -p "$WORK"
 
-git clone https://github.com/DDx-Trace/DDx-TRACE.git "$WORK/DDx-TRACE"
+git clone https://github.com/JakobShen/DDx-TRACE.git "$WORK/DDx-TRACE"
 cd "$WORK/DDx-TRACE"
 
 bash skills/run-ddx-trace-vllm/scripts/prepare_data.sh \

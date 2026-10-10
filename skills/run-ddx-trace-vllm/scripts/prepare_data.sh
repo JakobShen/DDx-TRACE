@@ -7,7 +7,7 @@ usage() {
 }
 
 work_dir=""
-code_url="https://github.com/DDx-Trace/DDx-TRACE.git"
+code_url="https://github.com/JakobShen/DDx-TRACE.git"
 data_url="https://huggingface.co/datasets/Anonym001/DDx-TRACE"
 
 while [[ $# -gt 0 ]]; do
