@@ -9,6 +9,12 @@ with an efficient investigation path.
   [docs/OPEN_SOURCE_MODELS.md](docs/OPEN_SOURCE_MODELS.md)
 - Benchmark and metric details: [docs/BENCHMARK_REFERENCE.md](docs/BENCHMARK_REFERENCE.md)
 
+## Project video
+
+[![Watch the DDx-TRACE project video](docs/media/ddx-trace-video.jpg)](https://jakobshen.github.io/DDx-TRACE/)
+
+[**Watch the video (1:49)**](https://jakobshen.github.io/DDx-TRACE/) · [Download MP4](https://github.com/JakobShen/DDx-TRACE/raw/refs/heads/main/docs/media/DDxTRACE_promo_v5_web.mp4)
+
 ## Repository layout
 
 - `run_main.py`: main benchmark entrypoint
